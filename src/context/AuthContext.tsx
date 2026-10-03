@@ -17,6 +17,7 @@ interface AuthContextType {
   isPinRequired: boolean;
   superAdminPin: string;
   updateSuperAdminPin: (newPin: string) => Promise<boolean>;
+  loginWithPhoneAndPassword: (phone: string, pass: string) => Promise<{ success: boolean; error?: string }>;
   unlockAsStoreAdmin: (storeId: string, pin: string) => { success: boolean; error?: string };
   unlockAsSuperAdmin: (pin: string) => { success: boolean; error?: string };
   unlockWithPin: (pin: string) => boolean;
@@ -221,6 +222,22 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     await refreshStores();
   };
 
+  const loginWithPhoneAndPassword = async (phone: string, pass: string): Promise<{ success: boolean; error?: string }> => {
+    const res = await db.loginWithPhoneAndPassword(phone, pass);
+    if (res.success && res.user) {
+      setUser(res.user);
+      setRole(res.user.role);
+      if (res.store) {
+        setActiveStoreIdState(res.store.id);
+        setStoreProfile(res.store);
+      }
+      setIsLocked(false);
+      await refreshStores();
+      return { success: true };
+    }
+    return { success: false, error: res.error || 'Authentication failed' };
+  };
+
   return (
     <AuthContext.Provider
       value={{
@@ -234,6 +251,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         isPinRequired: !!storeProfile?.pin_hash && storeProfile?.is_pin_enabled !== false,
         superAdminPin,
         updateSuperAdminPin,
+        loginWithPhoneAndPassword,
         unlockAsStoreAdmin,
         unlockAsSuperAdmin,
         unlockWithPin,

@@ -4,7 +4,7 @@ import { useAuth } from '../context/AuthContext';
 import { RegisterStoreModal } from './RegisterStoreModal';
 import { Fingerprint, Delete, ShieldCheck, ShieldAlert, Store, ChevronDown, Check, UserCheck, KeyRound, PlusCircle } from 'lucide-react-native';
 
-type AuthMode = 'STORE_LOGIN' | 'SUPER_ADMIN' | 'REGISTER';
+type AuthMode = 'PHONE_LOGIN' | 'STORE_LOGIN' | 'SUPER_ADMIN' | 'REGISTER';
 
 export const PinLockScreen: React.FC = () => {
   const {
@@ -14,6 +14,7 @@ export const PinLockScreen: React.FC = () => {
     unlockAsStoreAdmin,
     unlockAsSuperAdmin,
     unlockWithBiometrics,
+    loginWithPhoneAndPassword,
     registerStore,
     superAdminPin
   } = useAuth();
@@ -22,6 +23,11 @@ export const PinLockScreen: React.FC = () => {
   const [selectedStoreId, setSelectedStoreId] = useState<string>('');
   const [pin, setPin] = useState<string>('');
   const [isStorePickerOpen, setIsStorePickerOpen] = useState<boolean>(false);
+
+  // Phone + Password Auth State
+  const [loginPhone, setLoginPhone] = useState<string>('');
+  const [loginPass, setLoginPass] = useState<string>('');
+  const [loginError, setLoginError] = useState<string>('');
 
   // Registration Form State
   const [regStoreName, setRegStoreName] = useState<string>('');
@@ -82,6 +88,19 @@ export const PinLockScreen: React.FC = () => {
     }
   };
 
+  const handlePhoneLoginSubmit = async () => {
+    if (!loginPhone.trim() || !loginPass.trim()) {
+      setLoginError('Please enter Phone Number and Password/PIN.');
+      return;
+    }
+
+    setLoginError('');
+    const res = await loginWithPhoneAndPassword(loginPhone, loginPass);
+    if (!res.success) {
+      setLoginError(res.error || 'Invalid Phone Number or Password.');
+    }
+  };
+
   const handleDelete = () => {
     setPin(prev => prev.slice(0, -1));
   };
@@ -130,6 +149,19 @@ export const PinLockScreen: React.FC = () => {
           {/* Mode Switcher Tabs */}
           <View style={styles.modeTabs}>
             <TouchableOpacity
+              style={[styles.modeTab, mode === 'PHONE_LOGIN' && styles.modeTabActive]}
+              onPress={() => {
+                setMode('PHONE_LOGIN');
+                setLoginError('');
+              }}
+            >
+              <KeyRound size={16} color={mode === 'PHONE_LOGIN' ? '#ffffff' : '#64748b'} />
+              <Text style={[styles.modeTabText, mode === 'PHONE_LOGIN' && styles.modeTabTextActive]}>
+                Phone Auth
+              </Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
               style={[styles.modeTab, mode === 'STORE_LOGIN' && styles.modeTabActive]}
               onPress={() => {
                 setMode('STORE_LOGIN');
@@ -138,7 +170,7 @@ export const PinLockScreen: React.FC = () => {
             >
               <Store size={16} color={mode === 'STORE_LOGIN' ? '#ffffff' : '#64748b'} />
               <Text style={[styles.modeTabText, mode === 'STORE_LOGIN' && styles.modeTabTextActive]}>
-                Store Login
+                Store PIN
               </Text>
             </TouchableOpacity>
 
@@ -151,7 +183,7 @@ export const PinLockScreen: React.FC = () => {
             >
               <ShieldAlert size={16} color={mode === 'SUPER_ADMIN' ? '#ffffff' : '#64748b'} />
               <Text style={[styles.modeTabText, mode === 'SUPER_ADMIN' && styles.modeTabTextActive]}>
-                Super Admin
+                Admin
               </Text>
             </TouchableOpacity>
 
@@ -168,6 +200,45 @@ export const PinLockScreen: React.FC = () => {
               </Text>
             </TouchableOpacity>
           </View>
+
+          {/* PHONE + PASSWORD AUTH MODE */}
+          {mode === 'PHONE_LOGIN' && (
+            <View style={styles.regCard}>
+              <Text style={styles.regCardTitle}>Phone & Password Authentication</Text>
+              <Text style={styles.regCardSub}>Log in using your registered mobile number & password.</Text>
+
+              {loginError ? <Text style={styles.regErrorText}>{loginError}</Text> : null}
+
+              <View style={styles.regInputGroup}>
+                <Text style={styles.inputLabel}>Mobile Phone Number (10 Digits) *</Text>
+                <TextInput
+                  style={styles.textInput}
+                  keyboardType="phone-pad"
+                  placeholder="e.g. 9876543210"
+                  placeholderTextColor="#64748b"
+                  value={loginPhone}
+                  onChangeText={setLoginPhone}
+                />
+              </View>
+
+              <View style={styles.regInputGroup}>
+                <Text style={styles.inputLabel}>Password / Store PIN *</Text>
+                <TextInput
+                  style={styles.textInput}
+                  secureTextEntry
+                  placeholder="Enter Password / 4-Digit PIN"
+                  placeholderTextColor="#64748b"
+                  value={loginPass}
+                  onChangeText={setLoginPass}
+                />
+              </View>
+
+              <TouchableOpacity style={styles.submitRegBtn} onPress={handlePhoneLoginSubmit}>
+                <UserCheck size={18} color="#ffffff" />
+                <Text style={styles.submitRegBtnText}>LOG IN TO ACCOUNT</Text>
+              </TouchableOpacity>
+            </View>
+          )}
 
           {/* STORE LOGIN MODE */}
           {mode === 'STORE_LOGIN' && (
