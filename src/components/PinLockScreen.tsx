@@ -1,30 +1,24 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, Image, TouchableOpacity, Modal, Alert, ScrollView, TextInput } from 'react-native';
 import { useAuth } from '../context/AuthContext';
-import { RegisterStoreModal } from './RegisterStoreModal';
-import { Fingerprint, Delete, ShieldCheck, ShieldAlert, Store, ChevronDown, Check, UserCheck, KeyRound, PlusCircle } from 'lucide-react-native';
+import { Fingerprint, Delete, ShieldCheck, ShieldAlert, UserCheck, PlusCircle } from 'lucide-react-native';
 
-type AuthMode = 'PHONE_LOGIN' | 'STORE_LOGIN' | 'SUPER_ADMIN' | 'REGISTER';
+type AuthMode = 'LOGIN' | 'REGISTER' | 'SUPER_ADMIN';
 
 export const PinLockScreen: React.FC = () => {
   const {
     isLocked,
     allStores,
-    activeStoreId,
-    unlockAsStoreAdmin,
     unlockAsSuperAdmin,
     unlockWithBiometrics,
     loginWithPhoneAndPassword,
-    registerStore,
-    superAdminPin
+    registerStore
   } = useAuth();
 
-  const [mode, setMode] = useState<AuthMode>('STORE_LOGIN');
-  const [selectedStoreId, setSelectedStoreId] = useState<string>('');
+  const [mode, setMode] = useState<AuthMode>('LOGIN');
   const [pin, setPin] = useState<string>('');
-  const [isStorePickerOpen, setIsStorePickerOpen] = useState<boolean>(false);
 
-  // Phone + Password Auth State
+  // Phone + Password Login State
   const [loginPhone, setLoginPhone] = useState<string>('');
   const [loginPass, setLoginPass] = useState<string>('');
   const [loginError, setLoginError] = useState<string>('');
@@ -39,20 +33,13 @@ export const PinLockScreen: React.FC = () => {
 
   useEffect(() => {
     if (allStores.length > 0) {
-      if (activeStoreId && allStores.some(s => s.id === activeStoreId)) {
-        setSelectedStoreId(activeStoreId);
-      } else {
-        setSelectedStoreId(allStores[0].id);
-      }
-      setMode('STORE_LOGIN');
+      setMode('LOGIN');
     } else {
       setMode('REGISTER');
     }
-  }, [allStores, activeStoreId]);
+  }, [allStores]);
 
   if (!isLocked) return null;
-
-  const currentStore = allStores.find(s => s.id === selectedStoreId) || allStores[0];
 
   const handleKeyPress = (num: string) => {
     if (pin.length < 4) {
@@ -70,19 +57,7 @@ export const PinLockScreen: React.FC = () => {
     if (mode === 'SUPER_ADMIN') {
       const result = unlockAsSuperAdmin(inputPin);
       if (!result.success) {
-        Alert.alert('Super Admin Login Failed', result.error || 'Incorrect Super Admin PIN.');
-        setPin('');
-      }
-    } else {
-      if (!selectedStoreId) {
-        Alert.alert('Store Required', 'Please select or register a store first.');
-        setPin('');
-        return;
-      }
-
-      const result = unlockAsStoreAdmin(selectedStoreId, inputPin);
-      if (!result.success) {
-        Alert.alert('Store Login Failed', result.error || 'Incorrect Store Security PIN.');
+        Alert.alert('Super Admin Access Failed', result.error || 'Incorrect Super Admin PIN.');
         setPin('');
       }
     }
@@ -97,7 +72,7 @@ export const PinLockScreen: React.FC = () => {
     setLoginError('');
     const res = await loginWithPhoneAndPassword(loginPhone, loginPass);
     if (!res.success) {
-      setLoginError(res.error || 'Invalid Phone Number or Password.');
+      setLoginError(res.error || 'Invalid Mobile Number or Password.');
     }
   };
 
@@ -107,11 +82,11 @@ export const PinLockScreen: React.FC = () => {
 
   const handleRegisterSubmit = async () => {
     if (!regStoreName.trim() || !regOwnerName.trim() || !regPhone.trim()) {
-      setRegError('Please enter Store Name, Owner Name, and Phone Number.');
+      setRegError('Please enter Shop Name, Owner Name, and Phone Number.');
       return;
     }
     if (!regPin || regPin.length !== 4) {
-      setRegError('Please specify a 4-digit Security PIN for your store.');
+      setRegError('Please set a 4-digit Security PIN for your shop.');
       return;
     }
 
@@ -125,9 +100,9 @@ export const PinLockScreen: React.FC = () => {
         pin_hash: regPin.trim()
       });
 
-      Alert.alert('Store Registered!', `Welcome to Kitna Hua, ${created.store_name}!`);
+      Alert.alert('Shop Registered!', `Welcome to Kitna Hua, ${created.store_name}!`);
     } catch (e: any) {
-      setRegError(e.message || 'Failed to register store.');
+      setRegError(e.message || 'Failed to register shop.');
     }
   };
 
@@ -143,34 +118,34 @@ export const PinLockScreen: React.FC = () => {
               resizeMode="cover"
             />
             <Text style={styles.appName}>Kitna Hua</Text>
-            <Text style={styles.subtitle}>Universal Digital Ledger & Billing System</Text>
+            <Text style={styles.subtitle}>Digital Khata & Billing System</Text>
           </View>
 
-          {/* Mode Switcher Tabs */}
+          {/* Clean Simplified Mode Switcher */}
           <View style={styles.modeTabs}>
             <TouchableOpacity
-              style={[styles.modeTab, mode === 'PHONE_LOGIN' && styles.modeTabActive]}
+              style={[styles.modeTab, mode === 'LOGIN' && styles.modeTabActive]}
               onPress={() => {
-                setMode('PHONE_LOGIN');
+                setMode('LOGIN');
                 setLoginError('');
               }}
             >
-              <KeyRound size={16} color={mode === 'PHONE_LOGIN' ? '#ffffff' : '#64748b'} />
-              <Text style={[styles.modeTabText, mode === 'PHONE_LOGIN' && styles.modeTabTextActive]}>
-                Phone Auth
+              <UserCheck size={16} color={mode === 'LOGIN' ? '#ffffff' : '#64748b'} />
+              <Text style={[styles.modeTabText, mode === 'LOGIN' && styles.modeTabTextActive]}>
+                Shopkeeper Login
               </Text>
             </TouchableOpacity>
 
             <TouchableOpacity
-              style={[styles.modeTab, mode === 'STORE_LOGIN' && styles.modeTabActive]}
+              style={[styles.modeTab, mode === 'REGISTER' && styles.modeTabActiveGreen]}
               onPress={() => {
-                setMode('STORE_LOGIN');
-                setPin('');
+                setMode('REGISTER');
+                setRegError('');
               }}
             >
-              <Store size={16} color={mode === 'STORE_LOGIN' ? '#ffffff' : '#64748b'} />
-              <Text style={[styles.modeTabText, mode === 'STORE_LOGIN' && styles.modeTabTextActive]}>
-                Store PIN
+              <PlusCircle size={16} color={mode === 'REGISTER' ? '#ffffff' : '#64748b'} />
+              <Text style={[styles.modeTabText, mode === 'REGISTER' && styles.modeTabTextActive]}>
+                Register New Shop
               </Text>
             </TouchableOpacity>
 
@@ -183,38 +158,25 @@ export const PinLockScreen: React.FC = () => {
             >
               <ShieldAlert size={16} color={mode === 'SUPER_ADMIN' ? '#ffffff' : '#64748b'} />
               <Text style={[styles.modeTabText, mode === 'SUPER_ADMIN' && styles.modeTabTextActive]}>
-                Admin
-              </Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={[styles.modeTab, mode === 'REGISTER' && styles.modeTabActiveGreen]}
-              onPress={() => {
-                setMode('REGISTER');
-                setPin('');
-              }}
-            >
-              <PlusCircle size={16} color={mode === 'REGISTER' ? '#ffffff' : '#64748b'} />
-              <Text style={[styles.modeTabText, mode === 'REGISTER' && styles.modeTabTextActive]}>
-                New Shop
+                Super Admin
               </Text>
             </TouchableOpacity>
           </View>
 
-          {/* PHONE + PASSWORD AUTH MODE */}
-          {mode === 'PHONE_LOGIN' && (
+          {/* SHOPKEEPER LOGIN MODE (Phone + Password/PIN) */}
+          {mode === 'LOGIN' && (
             <View style={styles.regCard}>
-              <Text style={styles.regCardTitle}>Phone & Password Authentication</Text>
-              <Text style={styles.regCardSub}>Log in using your registered mobile number & password.</Text>
+              <Text style={styles.regCardTitle}>Shopkeeper Login</Text>
+              <Text style={styles.regCardSub}>Enter your registered phone number and password or PIN.</Text>
 
               {loginError ? <Text style={styles.regErrorText}>{loginError}</Text> : null}
 
               <View style={styles.regInputGroup}>
-                <Text style={styles.inputLabel}>Mobile Phone Number (10 Digits) *</Text>
+                <Text style={styles.inputLabel}>Phone Number *</Text>
                 <TextInput
                   style={styles.textInput}
                   keyboardType="phone-pad"
-                  placeholder="e.g. 9876543210"
+                  placeholder="Enter 10-digit mobile number"
                   placeholderTextColor="#64748b"
                   value={loginPhone}
                   onChangeText={setLoginPhone}
@@ -222,11 +184,11 @@ export const PinLockScreen: React.FC = () => {
               </View>
 
               <View style={styles.regInputGroup}>
-                <Text style={styles.inputLabel}>Password / Store PIN *</Text>
+                <Text style={styles.inputLabel}>Password / PIN *</Text>
                 <TextInput
                   style={styles.textInput}
                   secureTextEntry
-                  placeholder="Enter Password / 4-Digit PIN"
+                  placeholder="Enter Password / PIN"
                   placeholderTextColor="#64748b"
                   value={loginPass}
                   onChangeText={setLoginPass}
@@ -235,131 +197,8 @@ export const PinLockScreen: React.FC = () => {
 
               <TouchableOpacity style={styles.submitRegBtn} onPress={handlePhoneLoginSubmit}>
                 <UserCheck size={18} color="#ffffff" />
-                <Text style={styles.submitRegBtnText}>LOG IN TO ACCOUNT</Text>
+                <Text style={styles.submitRegBtnText}>LOG IN</Text>
               </TouchableOpacity>
-            </View>
-          )}
-
-          {/* STORE LOGIN MODE */}
-          {mode === 'STORE_LOGIN' && (
-            <View style={styles.cardContainer}>
-              {allStores.length === 0 ? (
-                <View style={styles.emptyCard}>
-                  <Text style={styles.emptyTitle}>No Shops Registered Yet</Text>
-                  <Text style={styles.emptySub}>
-                    Register your store account below to start managing customer accounts.
-                  </Text>
-                  <TouchableOpacity
-                    style={styles.regDirectBtn}
-                    onPress={() => setMode('REGISTER')}
-                  >
-                    <PlusCircle size={18} color="#ffffff" />
-                    <Text style={styles.regDirectBtnText}>Register Store Account</Text>
-                  </TouchableOpacity>
-                </View>
-              ) : (
-                <>
-                  <Text style={styles.fieldLabel}>Select Store Account:</Text>
-                  <TouchableOpacity
-                    style={styles.storeSelectorBtn}
-                    onPress={() => setIsStorePickerOpen(!isStorePickerOpen)}
-                  >
-                    <View style={{ flex: 1 }}>
-                      <Text style={styles.selectedStoreName}>
-                        {currentStore ? currentStore.store_name : 'Select Store'}
-                      </Text>
-                      {currentStore ? (
-                        <Text style={styles.selectedStoreSub}>
-                          Proprietor: {currentStore.owner_name} | Tel: {currentStore.phone}
-                        </Text>
-                      ) : null}
-                    </View>
-                    <ChevronDown size={20} color="#38bdf8" />
-                  </TouchableOpacity>
-
-                  {/* Store Selector Dropdown */}
-                  {isStorePickerOpen && (
-                    <View style={styles.dropdownMenu}>
-                      {allStores.map(s => {
-                        const isSel = s.id === selectedStoreId;
-                        return (
-                          <TouchableOpacity
-                            key={s.id}
-                            style={[styles.dropdownItem, isSel && styles.dropdownItemSel]}
-                            onPress={() => {
-                              setSelectedStoreId(s.id);
-                              setIsStorePickerOpen(false);
-                            }}
-                          >
-                            <View style={{ flex: 1 }}>
-                              <Text style={[styles.dropdownItemName, isSel && styles.dropdownItemNameSel]}>
-                                {s.store_name}
-                              </Text>
-                              <Text style={styles.dropdownItemSub}>
-                                {s.owner_name} ({s.phone})
-                              </Text>
-                            </View>
-                            {isSel && <Check size={18} color="#0284c7" />}
-                          </TouchableOpacity>
-                        );
-                      })}
-                    </View>
-                  )}
-
-                  <Text style={styles.pinPromptTitle}>Enter Store 4-Digit Security PIN</Text>
-
-                  {/* PIN Indicators */}
-                  <View style={styles.pinRow}>
-                    {[0, 1, 2, 3].map((idx) => (
-                      <View
-                        key={idx}
-                        style={[
-                          styles.dot,
-                          pin.length > idx && styles.dotFilled
-                        ]}
-                      />
-                    ))}
-                  </View>
-
-                  {/* Keypad */}
-                  <View style={styles.keypad}>
-                    {['1', '2', '3', '4', '5', '6', '7', '8', '9'].map((num) => (
-                      <TouchableOpacity
-                        key={num}
-                        style={styles.keyBtn}
-                        onPress={() => handleKeyPress(num)}
-                        activeOpacity={0.7}
-                      >
-                        <Text style={styles.keyText}>{num}</Text>
-                      </TouchableOpacity>
-                    ))}
-
-                    <TouchableOpacity
-                      style={[styles.keyBtn, styles.actionKey]}
-                      onPress={unlockWithBiometrics}
-                      activeOpacity={0.7}
-                    >
-                      <Fingerprint size={28} color="#0284c7" />
-                    </TouchableOpacity>
-
-                    <TouchableOpacity
-                      style={styles.keyBtn}
-                      onPress={() => handleKeyPress('0')}
-                      activeOpacity={0.7}
-                    >
-                      <Text style={styles.keyText}>0</Text>
-                    </TouchableOpacity>
-
-                    <TouchableOpacity
-                      style={[styles.keyBtn, styles.actionKey]}
-                      onPress={handleDelete}
-                      activeOpacity={0.7}
-                    >
-                      <Delete size={26} color="#e11d48" />
-                    </TouchableOpacity>
-                  </View>
-                </>
-              )}
             </View>
           )}
 
@@ -369,12 +208,12 @@ export const PinLockScreen: React.FC = () => {
               <View style={styles.adminHeaderBox}>
                 <ShieldAlert size={28} color="#38bdf8" />
                 <View style={{ flex: 1 }}>
-                  <Text style={styles.adminBoxTitle}>Super Admin Master Authentication</Text>
-                  <Text style={styles.adminBoxSub}>Global tenant oversight & multi-store administration</Text>
+                  <Text style={styles.adminBoxTitle}>Super Admin Access</Text>
+                  <Text style={styles.adminBoxSub}>Master controls & system administration</Text>
                 </View>
               </View>
 
-              <Text style={styles.pinPromptTitle}>Enter Super Admin 4-Digit Security PIN</Text>
+              <Text style={styles.pinPromptTitle}>Enter Super Admin 4-Digit PIN</Text>
 
               <View style={styles.pinRow}>
                 {[0, 1, 2, 3].map((idx) => (
@@ -428,16 +267,16 @@ export const PinLockScreen: React.FC = () => {
             </View>
           )}
 
-          {/* REGISTER NEW STORE MODE */}
+          {/* REGISTER NEW SHOP MODE */}
           {mode === 'REGISTER' && (
             <View style={styles.regCard}>
-              <Text style={styles.regCardTitle}>Register New Store Account</Text>
-              <Text style={styles.regCardSub}>Create your store ledger workspace with a secure PIN.</Text>
+              <Text style={styles.regCardTitle}>Register New Shop</Text>
+              <Text style={styles.regCardSub}>Create your shop khata account to start managing bills.</Text>
 
               {regError ? <Text style={styles.regErrorText}>{regError}</Text> : null}
 
               <View style={styles.regInputGroup}>
-                <Text style={styles.inputLabel}>Store / Shop Name *</Text>
+                <Text style={styles.inputLabel}>Shop Name *</Text>
                 <TextInput
                   style={styles.textInput}
                   placeholder="e.g. City Supermarket"
@@ -448,7 +287,7 @@ export const PinLockScreen: React.FC = () => {
               </View>
 
               <View style={styles.regInputGroup}>
-                <Text style={styles.inputLabel}>Owner / Proprietor Name *</Text>
+                <Text style={styles.inputLabel}>Owner Name *</Text>
                 <TextInput
                   style={styles.textInput}
                   placeholder="e.g. Rajesh Kumar"
@@ -471,7 +310,7 @@ export const PinLockScreen: React.FC = () => {
               </View>
 
               <View style={styles.regInputGroup}>
-                <Text style={styles.inputLabel}>Store Address (Optional)</Text>
+                <Text style={styles.inputLabel}>Shop Address (Optional)</Text>
                 <TextInput
                   style={styles.textInput}
                   placeholder="e.g. Main Market, Delhi"
@@ -482,7 +321,7 @@ export const PinLockScreen: React.FC = () => {
               </View>
 
               <View style={styles.regInputGroup}>
-                <Text style={styles.inputLabel}>4-Digit Store Security PIN *</Text>
+                <Text style={styles.inputLabel}>Set 4-Digit Security PIN *</Text>
                 <TextInput
                   style={styles.textInput}
                   keyboardType="numeric"
@@ -497,7 +336,7 @@ export const PinLockScreen: React.FC = () => {
 
               <TouchableOpacity style={styles.submitRegBtn} onPress={handleRegisterSubmit}>
                 <UserCheck size={18} color="#ffffff" />
-                <Text style={styles.submitRegBtnText}>CREATE & LAUNCH STORE</Text>
+                <Text style={styles.submitRegBtnText}>REGISTER SHOP</Text>
               </TouchableOpacity>
             </View>
           )}
