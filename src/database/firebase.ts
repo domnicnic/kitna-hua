@@ -1,8 +1,10 @@
+import { Platform } from 'react-native';
 import { initializeApp, getApps, getApp } from 'firebase/app';
 import {
   initializeFirestore,
   persistentLocalCache,
   persistentMultipleTabManager,
+  memoryLocalCache,
   getFirestore,
   doc,
   getDoc,
@@ -32,12 +34,18 @@ const firebaseConfig = {
 // Initialize Firebase App
 const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApp();
 
-// Initialize Cloud Firestore with Offline Persistent Local Cache Enabled
+// Initialize Cloud Firestore safely according to Platform (Web vs Mobile Native)
 let dbFirestore: any;
 try {
-  dbFirestore = initializeFirestore(app, {
-    localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager() })
-  });
+  if (Platform.OS === 'web') {
+    dbFirestore = initializeFirestore(app, {
+      localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager() })
+    });
+  } else {
+    dbFirestore = initializeFirestore(app, {
+      localCache: memoryLocalCache()
+    });
+  }
 } catch (e) {
   dbFirestore = getFirestore(app);
 }

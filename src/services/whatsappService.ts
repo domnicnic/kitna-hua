@@ -92,7 +92,9 @@ export const sendWhatsAppMessage = async (phone: string, text: string): Promise<
   } catch (err) {
     console.error('Error opening WhatsApp/SMS link:', err);
     // Fallback direct open for web
-    window.open(whatsappUrl, '_blank');
+    if (typeof window !== 'undefined' && window.open) {
+      window.open(whatsappUrl, '_blank');
+    }
     return false;
   }
 };

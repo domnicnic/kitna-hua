@@ -156,7 +156,7 @@ export const exportPDF = async (params: GeneratePDFParams): Promise<void> => {
       const Sharing = require('expo-sharing');
       const { uri } = await Print.printToFileAsync({ html });
       await Sharing.shareAsync(uri, { UTI: '.pdf', mimeType: 'application/pdf' });
-    } else {
+    } else if (typeof window !== 'undefined' && window.open) {
       // Web fallback printing window
       const printWindow = window.open('', '_blank');
       if (printWindow) {
