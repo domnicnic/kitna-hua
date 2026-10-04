@@ -3,6 +3,14 @@ if (typeof (globalThis as any).Buffer === 'undefined') {
   (globalThis as any).Buffer = Buffer;
 }
 
+import { LogBox } from 'react-native';
+
+LogBox.ignoreLogs([
+  'Unsupported top level event type "topSvgLayout"',
+  'SafeAreaView has been deprecated',
+  'Cannot connect to Expo CLI',
+]);
+
 import { registerRootComponent } from 'expo';
 
 import App from './App';

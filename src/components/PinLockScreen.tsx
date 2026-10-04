@@ -130,9 +130,9 @@ export const PinLockScreen: React.FC = () => {
                 setLoginError('');
               }}
             >
-              <UserCheck size={16} color={mode === 'LOGIN' ? '#ffffff' : '#64748b'} />
-              <Text style={[styles.modeTabText, mode === 'LOGIN' && styles.modeTabTextActive]}>
-                Shopkeeper Login
+              <UserCheck size={15} color={mode === 'LOGIN' ? '#ffffff' : '#64748b'} />
+              <Text style={[styles.modeTabText, mode === 'LOGIN' && styles.modeTabTextActive]} numberOfLines={1}>
+                Login
               </Text>
             </TouchableOpacity>
 
@@ -143,9 +143,9 @@ export const PinLockScreen: React.FC = () => {
                 setRegError('');
               }}
             >
-              <PlusCircle size={16} color={mode === 'REGISTER' ? '#ffffff' : '#64748b'} />
-              <Text style={[styles.modeTabText, mode === 'REGISTER' && styles.modeTabTextActive]}>
-                Register New Shop
+              <PlusCircle size={15} color={mode === 'REGISTER' ? '#ffffff' : '#64748b'} />
+              <Text style={[styles.modeTabText, mode === 'REGISTER' && styles.modeTabTextActive]} numberOfLines={1}>
+                Register Shop
               </Text>
             </TouchableOpacity>
 
@@ -156,8 +156,8 @@ export const PinLockScreen: React.FC = () => {
                 setPin('');
               }}
             >
-              <ShieldAlert size={16} color={mode === 'SUPER_ADMIN' ? '#ffffff' : '#64748b'} />
-              <Text style={[styles.modeTabText, mode === 'SUPER_ADMIN' && styles.modeTabTextActive]}>
+              <ShieldAlert size={15} color={mode === 'SUPER_ADMIN' ? '#ffffff' : '#64748b'} />
+              <Text style={[styles.modeTabText, mode === 'SUPER_ADMIN' && styles.modeTabTextActive]} numberOfLines={1}>
                 Super Admin
               </Text>
             </TouchableOpacity>
@@ -402,8 +402,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     paddingVertical: 8,
+    paddingHorizontal: 2,
     borderRadius: 8,
-    gap: 4,
+    gap: 3,
   },
   modeTabActive: { backgroundColor: '#2563eb' },
   modeTabActiveSuper: { backgroundColor: '#0284c7' },

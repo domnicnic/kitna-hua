@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { StyleSheet, View, Text, TouchableOpacity, SafeAreaView, StatusBar, Modal, ScrollView, Platform } from 'react-native';
+import { StyleSheet, View, Text, TouchableOpacity, StatusBar, Modal, ScrollView, Platform } from 'react-native';
+import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import { AuthProvider, useAuth } from './src/context/AuthContext';
 import { LedgerProvider, useLedger } from './src/context/LedgerContext';
 import { Header } from './src/components/Header';
@@ -194,11 +195,13 @@ const AppContent: React.FC = () => {
 
 export default function App() {
   return (
-    <AuthProvider>
-      <LedgerProvider>
-        <AppContent />
-      </LedgerProvider>
-    </AuthProvider>
+    <SafeAreaProvider>
+      <AuthProvider>
+        <LedgerProvider>
+          <AppContent />
+        </LedgerProvider>
+      </AuthProvider>
+    </SafeAreaProvider>
   );
 }
 
