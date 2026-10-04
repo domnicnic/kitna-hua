@@ -100,6 +100,12 @@ export const PinLockScreen: React.FC = () => {
         pin_hash: regPin.trim()
       });
 
+      setRegStoreName('');
+      setRegOwnerName('');
+      setRegPhone('');
+      setRegAddress('');
+      setRegPin('');
+
       Alert.alert('Shop Registered!', `Welcome to Kitna Hua, ${created.store_name}!`);
     } catch (e: any) {
       setRegError(e.message || 'Failed to register shop.');

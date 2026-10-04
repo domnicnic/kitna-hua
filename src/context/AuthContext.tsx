@@ -188,6 +188,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const registerStore = async (params: StoreRegisterParams): Promise<StoreProfile> => {
     const created = await db.registerStore(params);
+    setAllStores(prev => [...prev.filter(s => s.id !== created.id), created]);
     setActiveStoreIdState(created.id);
     setStoreProfile(created);
     setRole('STORE_ADMIN');
@@ -199,7 +200,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       store_name: created.store_name
     });
     setIsLocked(false);
-    await refreshStores();
+    refreshStores().catch(() => {});
     return created;
   };
 

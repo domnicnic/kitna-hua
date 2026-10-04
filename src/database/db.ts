@@ -199,7 +199,7 @@ export class DatabaseService {
     return { success: false, error: 'Phone number not registered. Please register your shop first.' };
   }
 
-  // STORE SELF-REGISTRATION (ATOMIC FIRESTORE BATCH WRITE)
+  // STORE SELF-REGISTRATION (LOCAL FIRST + ASYNC FIRESTORE BATCH)
   public async registerStore(params: StoreRegisterParams): Promise<StoreProfile> {
     const cleanPhone = params.phone.trim();
     const storeId = `store-${generateUUID().slice(0, 8)}`;
@@ -214,39 +214,57 @@ export class DatabaseService {
       created_at: new Date().toISOString()
     };
 
-    // 1. Write Atomic Batch to Firestore
+    // 1. Immediately persist locally (AsyncStorage) so registration succeeds instantly offline/mobile
     try {
-      const batch = writeBatch(dbFirestore);
-      const storeRef = doc(dbFirestore, 'stores', storeId);
-      const userRef = doc(dbFirestore, 'users', cleanPhone);
+      const storesData = await AsyncStorage.getItem(STORAGE_KEYS.STORES);
+      const existingStores: StoreProfile[] = storesData ? JSON.parse(storesData) : [];
+      const updatedStores = [...existingStores.filter(s => s.phone !== cleanPhone && s.id !== storeId), newStore];
+      await AsyncStorage.setItem(STORAGE_KEYS.STORES, JSON.stringify(updatedStores));
 
-      batch.set(storeRef, {
-        storeName: newStore.store_name,
-        ownerName: newStore.owner_name,
-        phone: cleanPhone,
-        address: newStore.address,
-        pinHash: newStore.pin_hash,
-        isActive: true,
-        createdAt: serverTimestamp()
-      });
-
-      batch.set(userRef, {
-        phoneNumber: cleanPhone,
-        password: newStore.pin_hash,
+      const usersData = await AsyncStorage.getItem(STORAGE_KEYS.USERS);
+      const existingUsers: User[] = usersData ? JSON.parse(usersData) : [];
+      const newUser: User = {
+        id: `user-${cleanPhone}`,
+        store_id: storeId,
+        email_or_phone: cleanPhone,
         role: 'STORE_ADMIN',
-        storeId: storeId,
-        createdAt: serverTimestamp()
-      });
-
-      await batch.commit();
-    } catch (fsBatchErr) {
-      console.warn('Firestore Atomic Batch failed, persisting to local storage adapter:', fsBatchErr);
+        store_name: newStore.store_name
+      };
+      await AsyncStorage.setItem(STORAGE_KEYS.USERS, JSON.stringify([...existingUsers.filter(u => u.email_or_phone !== cleanPhone), newUser]));
+    } catch (localErr) {
+      console.warn('Local storage write warning:', localErr);
     }
 
-    // 2. Persist locally
-    const stores = await this.getAllStores();
-    const updated = [...stores.filter(s => s.phone !== cleanPhone), newStore];
-    await AsyncStorage.setItem(STORAGE_KEYS.STORES, JSON.stringify(updated));
+    // 2. Write to Firestore in background (non-blocking)
+    (async () => {
+      try {
+        const batch = writeBatch(dbFirestore);
+        const storeRef = doc(dbFirestore, 'stores', storeId);
+        const userRef = doc(dbFirestore, 'users', cleanPhone);
+
+        batch.set(storeRef, {
+          storeName: newStore.store_name,
+          ownerName: newStore.owner_name,
+          phone: cleanPhone,
+          address: newStore.address,
+          pinHash: newStore.pin_hash,
+          isActive: true,
+          createdAt: serverTimestamp()
+        });
+
+        batch.set(userRef, {
+          phoneNumber: cleanPhone,
+          password: newStore.pin_hash,
+          role: 'STORE_ADMIN',
+          storeId: storeId,
+          createdAt: serverTimestamp()
+        });
+
+        await batch.commit();
+      } catch (fsBatchErr) {
+        console.warn('Firestore Atomic Batch non-blocking warning:', fsBatchErr);
+      }
+    })();
 
     return newStore;
   }
