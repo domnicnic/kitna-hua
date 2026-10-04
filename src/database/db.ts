@@ -416,36 +416,46 @@ export class DatabaseService {
   }
 
   public async getCustomers(storeId: string): Promise<Customer[]> {
-    try {
-      const custRef = collection(dbFirestore, 'stores', storeId, 'customers');
-      const snap = await getDocs(custRef);
-      if (!snap.empty) {
-        const fsCusts: Customer[] = snap.docs.map(docSnap => {
-          const d = docSnap.data();
-          return {
-            id: docSnap.id,
-            store_id: storeId,
-            name: d.name || 'Customer',
-            phone: d.phone || '',
-            avatar_url: d.photoUrl || d.avatar_url || '',
-            address: d.address || '',
-            credit_limit: d.creditLimit || 0,
-            advance_balance: d.advanceBalance || 0,
-            created_at: d.createdAt?.toDate ? d.createdAt.toDate().toISOString() : new Date().toISOString()
-          };
-        });
-
-        const all = await this.getAllCustomersGlobal();
-        const otherStoreCusts = all.filter(c => c.store_id !== storeId);
-        await AsyncStorage.setItem(STORAGE_KEYS.CUSTOMERS, JSON.stringify([...otherStoreCusts, ...fsCusts]));
-        return fsCusts;
-      }
-    } catch (e) {
-      console.warn('Firestore get customers fallback:', e);
-    }
-
     const all = await this.getAllCustomersGlobal();
-    return all.filter(c => c.store_id === storeId);
+    const localStoreCusts = all.filter(c => c.store_id === storeId);
+
+    // Non-blocking background sync from Firestore
+    (async () => {
+      try {
+        const custRef = collection(dbFirestore, 'stores', storeId, 'customers');
+        const snap = await getDocs(custRef);
+        if (!snap.empty) {
+          const fsCusts: Customer[] = snap.docs.map(docSnap => {
+            const d = docSnap.data();
+            return {
+              id: docSnap.id,
+              store_id: storeId,
+              name: d.name || 'Customer',
+              phone: d.phone || '',
+              avatar_url: d.photoUrl || d.avatar_url || '',
+              address: d.address || '',
+              credit_limit: d.creditLimit || 0,
+              advance_balance: d.advanceBalance || 0,
+              created_at: d.createdAt?.toDate ? d.createdAt.toDate().toISOString() : new Date().toISOString()
+            };
+          });
+
+          const currentAll = await this.getAllCustomersGlobal();
+          const otherStoreCusts = currentAll.filter(c => c.store_id !== storeId);
+          // Merge local + remote
+          const fsMap = new Map(fsCusts.map(c => [c.id, c]));
+          currentAll.filter(c => c.store_id === storeId).forEach(lc => {
+            if (!fsMap.has(lc.id)) fsMap.set(lc.id, lc);
+          });
+
+          await AsyncStorage.setItem(STORAGE_KEYS.CUSTOMERS, JSON.stringify([...otherStoreCusts, ...Array.from(fsMap.values())]));
+        }
+      } catch (e) {
+        // Silent fallback to local storage
+      }
+    })();
+
+    return localStoreCusts;
   }
 
   public async addCustomer(customer: Omit<Customer, 'id' | 'created_at'>): Promise<Customer> {
@@ -457,76 +467,95 @@ export class DatabaseService {
       created_at: new Date().toISOString()
     };
 
+    // 1. Instantly write to local storage
     try {
-      const custRef = doc(dbFirestore, 'stores', customer.store_id, 'customers', custId);
-      await setDoc(custRef, {
-        name: newCustomer.name,
-        phone: newCustomer.phone,
-        address: newCustomer.address || '',
-        creditLimit: newCustomer.credit_limit || 0,
-        advanceBalance: newCustomer.advance_balance || 0,
-        currentBalance: 0,
-        createdAt: serverTimestamp()
-      });
-    } catch (e) {
-      console.warn('Firestore add customer fallback:', e);
+      const all = await this.getAllCustomersGlobal();
+      const updated = [...all.filter(c => c.id !== custId), newCustomer];
+      await AsyncStorage.setItem(STORAGE_KEYS.CUSTOMERS, JSON.stringify(updated));
+    } catch (err) {
+      console.warn('Local add customer write warning:', err);
     }
 
-    const all = await this.getAllCustomersGlobal();
-    const updated = [...all, newCustomer];
-    await AsyncStorage.setItem(STORAGE_KEYS.CUSTOMERS, JSON.stringify(updated));
+    // 2. Non-blocking Firestore background write
+    (async () => {
+      try {
+        const custRef = doc(dbFirestore, 'stores', customer.store_id, 'customers', custId);
+        await setDoc(custRef, {
+          name: newCustomer.name,
+          phone: newCustomer.phone,
+          address: newCustomer.address || '',
+          creditLimit: newCustomer.credit_limit || 0,
+          advanceBalance: newCustomer.advance_balance || 0,
+          currentBalance: 0,
+          createdAt: serverTimestamp()
+        });
+      } catch (e) {
+        console.warn('Firestore add customer background warning:', e);
+      }
+    })();
+
     return newCustomer;
   }
 
   public async updateCustomer(customer: Customer): Promise<void> {
     try {
-      const custRef = doc(dbFirestore, 'stores', customer.store_id, 'customers', customer.id);
-      await updateDoc(custRef, {
-        name: customer.name,
-        phone: customer.phone,
-        address: customer.address || '',
-        creditLimit: customer.credit_limit || 0,
-        advanceBalance: customer.advance_balance || 0
-      });
-    } catch (e) {
-      console.warn('Firestore update customer fallback:', e);
+      const all = await this.getAllCustomersGlobal();
+      const updated = all.map(c => c.id === customer.id ? { ...c, ...customer } : c);
+      await AsyncStorage.setItem(STORAGE_KEYS.CUSTOMERS, JSON.stringify(updated));
+    } catch (err) {
+      console.warn('Local update customer warning:', err);
     }
 
-    const all = await this.getAllCustomersGlobal();
-    const updated = all.map(c => c.id === customer.id ? { ...c, ...customer } : c);
-    await AsyncStorage.setItem(STORAGE_KEYS.CUSTOMERS, JSON.stringify(updated));
+    (async () => {
+      try {
+        const custRef = doc(dbFirestore, 'stores', customer.store_id, 'customers', customer.id);
+        await updateDoc(custRef, {
+          name: customer.name,
+          phone: customer.phone,
+          address: customer.address || '',
+          creditLimit: customer.credit_limit || 0,
+          advanceBalance: customer.advance_balance || 0
+        });
+      } catch (e) {
+        console.warn('Firestore update customer background warning:', e);
+      }
+    })();
   }
 
   public async deleteCustomer(customerId: string): Promise<void> {
     const all = await this.getAllCustomersGlobal();
     const target = all.find(c => c.id === customerId);
-    if (target) {
-      try {
-        const custRef = doc(dbFirestore, 'stores', target.store_id, 'customers', customerId);
-        await deleteDoc(custRef);
-      } catch (e) {
-        console.warn('Firestore delete customer fallback:', e);
-      }
-    }
-
     const updated = all.filter(c => c.id !== customerId);
     await AsyncStorage.setItem(STORAGE_KEYS.CUSTOMERS, JSON.stringify(updated));
+
+    if (target) {
+      (async () => {
+        try {
+          const custRef = doc(dbFirestore, 'stores', target.store_id, 'customers', customerId);
+          await deleteDoc(custRef);
+        } catch (e) {
+          console.warn('Firestore delete customer background warning:', e);
+        }
+      })();
+    }
   }
 
   public async updateCustomerAdvance(customerId: string, newAdvanceBalance: number): Promise<void> {
     const all = await this.getAllCustomersGlobal();
     const target = all.find(c => c.id === customerId);
-    if (target) {
-      try {
-        const custRef = doc(dbFirestore, 'stores', target.store_id, 'customers', customerId);
-        await updateDoc(custRef, { advanceBalance: newAdvanceBalance });
-      } catch (e) {
-        console.warn('Firestore update advance fallback:', e);
-      }
-    }
-
     const updated = all.map(c => c.id === customerId ? { ...c, advance_balance: newAdvanceBalance } : c);
     await AsyncStorage.setItem(STORAGE_KEYS.CUSTOMERS, JSON.stringify(updated));
+
+    if (target) {
+      (async () => {
+        try {
+          const custRef = doc(dbFirestore, 'stores', target.store_id, 'customers', customerId);
+          await updateDoc(custRef, { advanceBalance: newAdvanceBalance });
+        } catch (e) {
+          console.warn('Firestore update advance background warning:', e);
+        }
+      })();
+    }
   }
 
   // TRANSACTIONS API
@@ -536,38 +565,6 @@ export class DatabaseService {
   }
 
   public async getTransactions(storeId: string, billingMonth?: string, customerId?: string): Promise<Transaction[]> {
-    try {
-      let txsRef = collection(dbFirestore, 'stores', storeId, 'transactions');
-      let q = query(txsRef);
-      if (customerId) {
-        q = query(txsRef, where('customerId', '==', customerId));
-      }
-      const snap = await getDocs(q);
-      if (!snap.empty) {
-        const fsTxs: Transaction[] = snap.docs.map(docSnap => {
-          const d = docSnap.data();
-          return {
-            id: docSnap.id,
-            store_id: storeId,
-            customer_id: d.customerId || d.customer_id || '',
-            type: d.type || 'UDHAAR',
-            total_amount: d.totalAmount || d.total_amount || 0,
-            billing_month: d.billingMonth || d.billing_month || new Date().toISOString().slice(0, 7),
-            notes: d.notes || '',
-            bill_image_url: d.billImageUrl || '',
-            items: d.items || [],
-            created_at: d.createdAt?.toDate ? d.createdAt.toDate().toISOString() : new Date().toISOString()
-          };
-        });
-
-        const allTxs = await this.getAllTransactionsGlobal();
-        const otherStoreTxs = allTxs.filter(t => t.store_id !== storeId);
-        await AsyncStorage.setItem(STORAGE_KEYS.TRANSACTIONS, JSON.stringify([...otherStoreTxs, ...fsTxs]));
-      }
-    } catch (e) {
-      console.warn('Firestore get transactions fallback:', e);
-    }
-
     const allTxs = await this.getAllTransactionsGlobal();
     let txs = allTxs.filter(t => t.store_id === storeId);
 
@@ -582,6 +579,45 @@ export class DatabaseService {
 
     const customers = await this.getAllCustomersGlobal();
     const customerMap = new Map(customers.map(c => [c.id, c]));
+
+    // Background sync from Firestore
+    (async () => {
+      try {
+        let txsRef = collection(dbFirestore, 'stores', storeId, 'transactions');
+        let q = query(txsRef);
+        if (customerId) {
+          q = query(txsRef, where('customerId', '==', customerId));
+        }
+        const snap = await getDocs(q);
+        if (!snap.empty) {
+          const fsTxs: Transaction[] = snap.docs.map(docSnap => {
+            const d = docSnap.data();
+            return {
+              id: docSnap.id,
+              store_id: storeId,
+              customer_id: d.customerId || d.customer_id || '',
+              type: d.type || 'UDHAAR',
+              total_amount: d.totalAmount || d.total_amount || 0,
+              billing_month: d.billingMonth || d.billing_month || new Date().toISOString().slice(0, 7),
+              notes: d.notes || '',
+              bill_image_url: d.billImageUrl || '',
+              items: d.items || [],
+              created_at: d.createdAt?.toDate ? d.createdAt.toDate().toISOString() : new Date().toISOString()
+            };
+          });
+
+          const currentTxs = await this.getAllTransactionsGlobal();
+          const otherStoreTxs = currentTxs.filter(t => t.store_id !== storeId);
+          const fsMap = new Map(fsTxs.map(t => [t.id, t]));
+          currentTxs.filter(t => t.store_id === storeId).forEach(lt => {
+            if (!fsMap.has(lt.id)) fsMap.set(lt.id, lt);
+          });
+          await AsyncStorage.setItem(STORAGE_KEYS.TRANSACTIONS, JSON.stringify([...otherStoreTxs, ...Array.from(fsMap.values())]));
+        }
+      } catch (e) {
+        // Silent fallback
+      }
+    })();
 
     return txs.map(t => ({
       ...t,
@@ -598,38 +634,47 @@ export class DatabaseService {
       created_at: new Date().toISOString()
     };
 
+    // 1. Immediately write to local storage
     try {
-      const txRef = doc(dbFirestore, 'stores', tx.store_id, 'transactions', txId);
-      const custTxRef = doc(dbFirestore, 'stores', tx.store_id, 'customers', tx.customer_id, 'transactions', txId);
+      const allTxs = await this.getAllTransactionsGlobal();
+      const updated = [newTx, ...allTxs.filter(t => t.id !== txId)];
+      await AsyncStorage.setItem(STORAGE_KEYS.TRANSACTIONS, JSON.stringify(updated));
 
-      const payload = {
-        customerId: tx.customer_id,
-        type: tx.type,
-        totalAmount: tx.total_amount,
-        billingMonth: tx.billing_month,
-        notes: tx.notes || '',
-        billImageUrl: tx.bill_image_url || '',
-        items: tx.items || [],
-        createdAt: serverTimestamp()
-      };
-
-      await setDoc(txRef, payload);
-      await setDoc(custTxRef, payload);
-    } catch (e) {
-      console.warn('Firestore add transaction fallback:', e);
-    }
-
-    if (tx.type === 'ADVANCE_DEPOSIT') {
-      const customers = await this.getAllCustomersGlobal();
-      const cust = customers.find(c => c.id === tx.customer_id);
-      if (cust) {
-        await this.updateCustomerAdvance(tx.customer_id, (cust.advance_balance || 0) + tx.total_amount);
+      if (tx.type === 'ADVANCE_DEPOSIT') {
+        const customers = await this.getAllCustomersGlobal();
+        const cust = customers.find(c => c.id === tx.customer_id);
+        if (cust) {
+          await this.updateCustomerAdvance(tx.customer_id, (cust.advance_balance || 0) + tx.total_amount);
+        }
       }
+    } catch (err) {
+      console.warn('Local add transaction write warning:', err);
     }
 
-    const allTxs = await this.getAllTransactionsGlobal();
-    const updated = [newTx, ...allTxs];
-    await AsyncStorage.setItem(STORAGE_KEYS.TRANSACTIONS, JSON.stringify(updated));
+    // 2. Non-blocking Firestore background write
+    (async () => {
+      try {
+        const txRef = doc(dbFirestore, 'stores', tx.store_id, 'transactions', txId);
+        const custTxRef = doc(dbFirestore, 'stores', tx.store_id, 'customers', tx.customer_id, 'transactions', txId);
+
+        const payload = {
+          customerId: tx.customer_id,
+          type: tx.type,
+          totalAmount: tx.total_amount,
+          billingMonth: tx.billing_month,
+          notes: tx.notes || '',
+          billImageUrl: tx.bill_image_url || '',
+          items: tx.items || [],
+          createdAt: serverTimestamp()
+        };
+
+        await setDoc(txRef, payload);
+        await setDoc(custTxRef, payload);
+      } catch (e) {
+        console.warn('Firestore add transaction background warning:', e);
+      }
+    })();
+
     return newTx;
   }
 

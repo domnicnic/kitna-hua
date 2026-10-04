@@ -15,6 +15,10 @@ export const Header: React.FC<HeaderProps> = ({ onOpenMonthSelector, onOpenSetti
   const { selectedMonth, metrics } = useLedger();
 
   const formatMonthTitle = (monthStr: string) => {
+    if (!monthStr || !monthStr.includes('-')) {
+      const now = new Date();
+      return now.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+    }
     const [year, month] = monthStr.split('-');
     const date = new Date(parseInt(year, 10), parseInt(month, 10) - 1, 1);
     return date.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });

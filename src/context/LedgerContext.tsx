@@ -192,18 +192,25 @@ export const LedgerProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       credit_limit: creditLimit || 0,
       advance_balance: initialAdvance || 0
     });
-    await refreshData();
+
+    setCustomers(prev => [...prev.filter(c => c.id !== newCust.id), newCust]);
+    setAllCustomersGlobal(prev => [...prev.filter(c => c.id !== newCust.id), newCust]);
+    refreshData().catch(() => {});
     return newCust;
   };
 
   const updateExistingCustomer = async (customer: Customer) => {
     await db.updateCustomer(customer);
-    await refreshData();
+    setCustomers(prev => prev.map(c => c.id === customer.id ? { ...c, ...customer } : c));
+    setAllCustomersGlobal(prev => prev.map(c => c.id === customer.id ? { ...c, ...customer } : c));
+    refreshData().catch(() => {});
   };
 
   const deleteCustomerAccount = async (customerId: string) => {
     await db.deleteCustomer(customerId);
-    await refreshData();
+    setCustomers(prev => prev.filter(c => c.id !== customerId));
+    setAllCustomersGlobal(prev => prev.filter(c => c.id !== customerId));
+    refreshData().catch(() => {});
   };
 
   const addNewTransaction = async (
@@ -228,7 +235,9 @@ export const LedgerProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       bill_image_url: photoUri || '',
       billing_month: selectedMonth
     });
-    await refreshData();
+
+    setTransactions(prev => [newTx, ...prev.filter(t => t.id !== newTx.id)]);
+    refreshData().catch(() => {});
     return newTx;
   };
 
