@@ -1,0 +1,23 @@
+{
+  "short_name": "Kitna Hua",
+  "name": "Kitna Hua - Digital Khata & Billing System",
+  "description": "Offline-First Encrypted Multi-Tenant Ledger & Billing System for Shopkeepers",
+  "icons": [
+    {
+      "src": "favicon.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "favicon.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "start_url": ".",
+  "display": "standalone",
+  "orientation": "portrait",
+  "theme_color": "#0f172a",
+  "background_color": "#0f172a"
+}
