@@ -1,5 +1,17 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, Modal, TextInput, TouchableOpacity, Alert } from 'react-native';
+import {
+  View,
+  Text,
+  StyleSheet,
+  Modal,
+  TextInput,
+  TouchableOpacity,
+  Alert,
+  KeyboardAvoidingView,
+  TouchableWithoutFeedback,
+  Keyboard,
+  Platform
+} from 'react-native';
 import { StoreRegisterParams } from '../types';
 import { Store, User, Phone, MapPin, Lock, X, CheckCircle } from 'lucide-react-native';
 
@@ -22,11 +34,13 @@ export const RegisterStoreModal: React.FC<RegisterStoreModalProps> = ({
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleSubmit = async () => {
+    const cleanPhone = phone.trim().replace(/[^0-9]/g, '');
+
     if (!storeName.trim() || !ownerName.trim()) {
       Alert.alert('Required Fields', 'Please enter your Store Name and Owner Name.');
       return;
     }
-    if (!phone.trim() || phone.trim().length < 10) {
+    if (!cleanPhone || cleanPhone.length !== 10) {
       Alert.alert('Valid Mobile Required', 'Please enter a valid 10-digit mobile number.');
       return;
     }
@@ -40,7 +54,7 @@ export const RegisterStoreModal: React.FC<RegisterStoreModalProps> = ({
       await onRegister({
         store_name: storeName.trim(),
         owner_name: ownerName.trim(),
-        phone: phone.trim(),
+        phone: cleanPhone,
         address: address.trim(),
         pin_hash: pinHash.trim()
       });
@@ -60,100 +74,108 @@ export const RegisterStoreModal: React.FC<RegisterStoreModalProps> = ({
 
   return (
     <Modal visible={visible} animationType="slide" transparent={true}>
-      <View style={styles.overlay}>
-        <View style={styles.card}>
-          <View style={styles.header}>
-            <View>
-              <Text style={styles.title}>Shopkeeper Self-Registration</Text>
-              <Text style={styles.subtitle}>Create your free digital Khata workspace</Text>
-            </View>
-            <TouchableOpacity onPress={onClose}>
-              <X size={20} color="#64748b" />
-            </TouchableOpacity>
-          </View>
-
-          <View style={styles.formGroup}>
-            <Text style={styles.label}>Store / Shop Name *</Text>
-            <View style={styles.inputBox}>
-              <Store size={18} color="#64748b" />
-              <TextInput
-                style={styles.input}
-                placeholder="e.g. Mahavir Kirana Store"
-                value={storeName}
-                onChangeText={setStoreName}
-              />
-            </View>
-          </View>
-
-          <View style={styles.formGroup}>
-            <Text style={styles.label}>Owner / Proprietor Name *</Text>
-            <View style={styles.inputBox}>
-              <User size={18} color="#64748b" />
-              <TextInput
-                style={styles.input}
-                placeholder="e.g. Rajesh Sharma"
-                value={ownerName}
-                onChangeText={setOwnerName}
-              />
-            </View>
-          </View>
-
-          <View style={styles.formGroup}>
-            <Text style={styles.label}>Contact Phone Number *</Text>
-            <View style={styles.inputBox}>
-              <Phone size={18} color="#64748b" />
-              <TextInput
-                style={styles.input}
-                placeholder="e.g. 9876543210"
-                keyboardType="phone-pad"
-                maxLength={10}
-                value={phone}
-                onChangeText={setPhone}
-              />
-            </View>
-          </View>
-
-          <View style={styles.formGroup}>
-            <Text style={styles.label}>Store Address</Text>
-            <View style={styles.inputBox}>
-              <MapPin size={18} color="#64748b" />
-              <TextInput
-                style={styles.input}
-                placeholder="e.g. Main Market, Delhi"
-                value={address}
-                onChangeText={setAddress}
-              />
-            </View>
-          </View>
-
-          <View style={styles.formGroup}>
-            <Text style={styles.label}>Create 4-Digit Security PIN *</Text>
-            <View style={styles.inputBox}>
-              <Lock size={18} color="#64748b" />
-              <TextInput
-                style={styles.input}
-                placeholder="e.g. 1234"
-                keyboardType="numeric"
-                secureTextEntry
-                maxLength={4}
-                value={pinHash}
-                onChangeText={setPinHash}
-              />
-            </View>
-          </View>
-
-          <TouchableOpacity
-            style={[styles.submitBtn, isSubmitting && styles.submitBtnDisabled]}
-            onPress={handleSubmit}
-            disabled={isSubmitting}
+      <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+        <View style={styles.overlay}>
+          <KeyboardAvoidingView
+            behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+            style={{ width: '100%' }}
           >
-            <CheckCircle size={18} color="#ffffff" />
-            <Text style={styles.submitBtnText}>
-              {isSubmitting ? 'CREATING STORE...' : 'REGISTER & START BILLING'}
-            </Text>
-          </TouchableOpacity>
+            <View style={styles.card}>
+              <View style={styles.header}>
+                <View>
+                  <Text style={styles.title}>Shopkeeper Self-Registration</Text>
+                  <Text style={styles.subtitle}>Create your free digital Khata workspace</Text>
+                </View>
+                <TouchableOpacity onPress={onClose} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+                  <X size={20} color="#64748b" />
+                </TouchableOpacity>
+              </View>
+
+              <View style={styles.formGroup}>
+                <Text style={styles.label}>Store / Shop Name *</Text>
+                <View style={styles.inputBox}>
+                  <Store size={18} color="#64748b" />
+                  <TextInput
+                    style={styles.input}
+                    placeholder="e.g. Mahavir Kirana Store"
+                    value={storeName}
+                    onChangeText={setStoreName}
+                  />
+                </View>
+              </View>
+
+              <View style={styles.formGroup}>
+                <Text style={styles.label}>Owner / Proprietor Name *</Text>
+                <View style={styles.inputBox}>
+                  <User size={18} color="#64748b" />
+                  <TextInput
+                    style={styles.input}
+                    placeholder="e.g. Rajesh Sharma"
+                    value={ownerName}
+                    onChangeText={setOwnerName}
+                  />
+                </View>
+              </View>
+
+              <View style={styles.formGroup}>
+                <Text style={styles.label}>Contact Phone Number *</Text>
+                <View style={styles.inputBox}>
+                  <Phone size={18} color="#64748b" />
+                  <TextInput
+                    style={styles.input}
+                    placeholder="e.g. 9876543210"
+                    keyboardType="phone-pad"
+                    maxLength={10}
+                    value={phone}
+                    onChangeText={setPhone}
+                  />
+                </View>
+              </View>
+
+              <View style={styles.formGroup}>
+                <Text style={styles.label}>Store Address</Text>
+                <View style={styles.inputBox}>
+                  <MapPin size={18} color="#64748b" />
+                  <TextInput
+                    style={styles.input}
+                    placeholder="e.g. Main Market, Delhi"
+                    value={address}
+                    onChangeText={setAddress}
+                  />
+                </View>
+              </View>
+
+              <View style={styles.formGroup}>
+                <Text style={styles.label}>Create 4-Digit Security PIN *</Text>
+                <View style={styles.inputBox}>
+                  <Lock size={18} color="#64748b" />
+                  <TextInput
+                    style={styles.input}
+                    placeholder="e.g. 1234"
+                    keyboardType="numeric"
+                    secureTextEntry
+                    maxLength={4}
+                    value={pinHash}
+                    onChangeText={setPinHash}
+                  />
+                </View>
+              </View>
+
+              <TouchableOpacity
+                style={[styles.submitBtn, isSubmitting && styles.submitBtnDisabled]}
+                onPress={handleSubmit}
+                disabled={isSubmitting}
+                activeOpacity={0.8}
+              >
+                <CheckCircle size={18} color="#ffffff" />
+                <Text style={styles.submitBtnText}>
+                  {isSubmitting ? 'CREATING STORE...' : 'REGISTER & START BILLING'}
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </KeyboardAvoidingView>
         </View>
-      </View>
+      </TouchableWithoutFeedback>
     </Modal>
   );
 };

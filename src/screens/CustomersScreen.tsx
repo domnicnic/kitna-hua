@@ -147,7 +147,11 @@ export const CustomersScreen: React.FC<CustomersScreenProps> = ({
         visible={isAddModalOpen}
         onClose={() => setIsAddModalOpen(false)}
         onAdd={async (name, phone, address, creditLimit, initialAdvance) => {
-          await addNewCustomer(name, phone, address, creditLimit, initialAdvance);
+          try {
+            await addNewCustomer(name, phone, address, creditLimit, initialAdvance);
+          } catch (err: any) {
+            Alert.alert('Cannot Add Customer', err.message || 'Failed to add customer account.');
+          }
         }}
       />
 

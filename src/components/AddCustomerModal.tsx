@@ -1,5 +1,17 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, Modal, TextInput, TouchableOpacity, Alert } from 'react-native';
+import {
+  View,
+  Text,
+  StyleSheet,
+  Modal,
+  TextInput,
+  TouchableOpacity,
+  Alert,
+  KeyboardAvoidingView,
+  TouchableWithoutFeedback,
+  Keyboard,
+  Platform
+} from 'react-native';
 import { User, Phone, MapPin, Wallet, X, CheckCircle } from 'lucide-react-native';
 
 interface AddCustomerModalProps {
@@ -20,21 +32,24 @@ export const AddCustomerModal: React.FC<AddCustomerModalProps> = ({
   const [initialAdvance, setInitialAdvance] = useState('');
 
   const handleSave = () => {
-    if (!name.trim()) {
+    const cleanName = name.trim();
+    const cleanPhone = phone.trim().replace(/[^0-9]/g, '');
+
+    if (!cleanName) {
       Alert.alert('Customer Name Required', 'Please enter customer full name.');
       return;
     }
-    if (!phone.trim() || phone.trim().length < 10) {
-      Alert.alert('Valid Phone Required', 'Please enter a valid 10-digit mobile number.');
+    if (!cleanPhone || cleanPhone.length !== 10) {
+      Alert.alert('Valid 10-Digit Phone Required', 'Please enter a valid 10-digit mobile number.');
       return;
     }
 
     onAdd(
-      name.trim(),
-      phone.trim(),
+      cleanName,
+      cleanPhone,
       address.trim(),
-      creditLimit ? parseFloat(creditLimit) : 0,
-      initialAdvance ? parseFloat(initialAdvance) : 0
+      creditLimit ? parseFloat(creditLimit) || 0.0 : 0.0,
+      initialAdvance ? parseFloat(initialAdvance) || 0.0 : 0.0
     );
 
     setName('');
@@ -47,86 +62,93 @@ export const AddCustomerModal: React.FC<AddCustomerModalProps> = ({
 
   return (
     <Modal visible={visible} animationType="slide" transparent={true}>
-      <View style={styles.overlay}>
-        <View style={styles.card}>
-          <View style={styles.header}>
-            <Text style={styles.title}>Add New Customer Account</Text>
-            <TouchableOpacity onPress={onClose}>
-              <X size={20} color="#64748b" />
-            </TouchableOpacity>
-          </View>
+      <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+        <View style={styles.overlay}>
+          <KeyboardAvoidingView
+            behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+            style={{ width: '100%' }}
+          >
+            <View style={styles.card}>
+              <View style={styles.header}>
+                <Text style={styles.title}>Add New Customer Account</Text>
+                <TouchableOpacity onPress={onClose} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+                  <X size={20} color="#64748b" />
+                </TouchableOpacity>
+              </View>
 
-          <View style={styles.formGroup}>
-            <Text style={styles.label}>Full Name *</Text>
-            <View style={styles.inputBox}>
-              <User size={18} color="#64748b" />
-              <TextInput
-                style={styles.input}
-                placeholder="e.g. Rajesh Kumar"
-                value={name}
-                onChangeText={setName}
-              />
+              <View style={styles.formGroup}>
+                <Text style={styles.label}>Full Name *</Text>
+                <View style={styles.inputBox}>
+                  <User size={18} color="#64748b" />
+                  <TextInput
+                    style={styles.input}
+                    placeholder="e.g. Rajesh Kumar"
+                    value={name}
+                    onChangeText={setName}
+                  />
+                </View>
+              </View>
+
+              <View style={styles.formGroup}>
+                <Text style={styles.label}>Phone Number (10 Digits) *</Text>
+                <View style={styles.inputBox}>
+                  <Phone size={18} color="#64748b" />
+                  <TextInput
+                    style={styles.input}
+                    placeholder="e.g. 9876543210"
+                    keyboardType="phone-pad"
+                    maxLength={10}
+                    value={phone}
+                    onChangeText={setPhone}
+                  />
+                </View>
+              </View>
+
+              <View style={styles.formGroup}>
+                <Text style={styles.label}>Address (Optional)</Text>
+                <View style={styles.inputBox}>
+                  <MapPin size={18} color="#64748b" />
+                  <TextInput
+                    style={styles.input}
+                    placeholder="e.g. Flat 204, Main Market"
+                    value={address}
+                    onChangeText={setAddress}
+                  />
+                </View>
+              </View>
+
+              <View style={styles.row}>
+                <View style={[styles.formGroup, { flex: 1 }]}>
+                  <Text style={styles.label}>Credit Limit (₹)</Text>
+                  <TextInput
+                    style={styles.numInput}
+                    placeholder="e.g. 5000"
+                    keyboardType="numeric"
+                    value={creditLimit}
+                    onChangeText={setCreditLimit}
+                  />
+                </View>
+
+                <View style={[styles.formGroup, { flex: 1 }]}>
+                  <Text style={styles.label}>Initial Advance (₹)</Text>
+                  <TextInput
+                    style={styles.numInput}
+                    placeholder="e.g. 500"
+                    keyboardType="numeric"
+                    value={initialAdvance}
+                    onChangeText={setInitialAdvance}
+                  />
+                </View>
+              </View>
+
+              <TouchableOpacity style={styles.submitBtn} onPress={handleSave} activeOpacity={0.8}>
+                <CheckCircle size={18} color="#ffffff" />
+                <Text style={styles.submitBtnText}>CREATE CUSTOMER ACCOUNT</Text>
+              </TouchableOpacity>
             </View>
-          </View>
-
-          <View style={styles.formGroup}>
-            <Text style={styles.label}>Phone Number (WhatsApp) *</Text>
-            <View style={styles.inputBox}>
-              <Phone size={18} color="#64748b" />
-              <TextInput
-                style={styles.input}
-                placeholder="e.g. 9876543210"
-                keyboardType="phone-pad"
-                maxLength={10}
-                value={phone}
-                onChangeText={setPhone}
-              />
-            </View>
-          </View>
-
-          <View style={styles.formGroup}>
-            <Text style={styles.label}>Address (Optional)</Text>
-            <View style={styles.inputBox}>
-              <MapPin size={18} color="#64748b" />
-              <TextInput
-                style={styles.input}
-                placeholder="e.g. Flat 204, Main Market"
-                value={address}
-                onChangeText={setAddress}
-              />
-            </View>
-          </View>
-
-          <View style={styles.row}>
-            <View style={[styles.formGroup, { flex: 1 }]}>
-              <Text style={styles.label}>Credit Limit (₹)</Text>
-              <TextInput
-                style={styles.numInput}
-                placeholder="e.g. 5000"
-                keyboardType="numeric"
-                value={creditLimit}
-                onChangeText={setCreditLimit}
-              />
-            </View>
-
-            <View style={[styles.formGroup, { flex: 1 }]}>
-              <Text style={styles.label}>Initial Advance (₹)</Text>
-              <TextInput
-                style={styles.numInput}
-                placeholder="e.g. 500"
-                keyboardType="numeric"
-                value={initialAdvance}
-                onChangeText={setInitialAdvance}
-              />
-            </View>
-          </View>
-
-          <TouchableOpacity style={styles.submitBtn} onPress={handleSave}>
-            <CheckCircle size={18} color="#ffffff" />
-            <Text style={styles.submitBtnText}>CREATE CUSTOMER ACCOUNT</Text>
-          </TouchableOpacity>
+          </KeyboardAvoidingView>
         </View>
-      </View>
+      </TouchableWithoutFeedback>
     </Modal>
   );
 };

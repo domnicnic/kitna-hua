@@ -184,10 +184,16 @@ export const LedgerProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       throw new Error('No active store selected for adding customer.');
     }
 
+    const cleanPhone = phone.trim();
+    const existing = customers.find(c => c.phone.trim() === cleanPhone);
+    if (existing) {
+      throw new Error(`A customer with phone number ${cleanPhone} already exists (${existing.name}).`);
+    }
+
     const newCust = await db.addCustomer({
       store_id: targetStoreId,
       name,
-      phone,
+      phone: cleanPhone,
       address: address || '',
       credit_limit: creditLimit || 0,
       advance_balance: initialAdvance || 0

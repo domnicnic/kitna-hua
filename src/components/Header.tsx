@@ -2,7 +2,7 @@ import React from 'react';
 import { View, Text, StyleSheet, Image, TouchableOpacity, Platform } from 'react-native';
 import { useAuth } from '../context/AuthContext';
 import { useLedger } from '../context/LedgerContext';
-import { ChevronDown, Lock, ShieldCheck } from 'lucide-react-native';
+import { ChevronDown, ChevronLeft, ChevronRight, Lock, ShieldCheck } from 'lucide-react-native';
 
 interface HeaderProps {
   onOpenMonthSelector?: () => void;
@@ -12,7 +12,7 @@ interface HeaderProps {
 
 export const Header: React.FC<HeaderProps> = ({ onOpenMonthSelector, onOpenSettings, onOpenAdminPortal }) => {
   const { storeProfile, role, lockApp } = useAuth();
-  const { selectedMonth, metrics } = useLedger();
+  const { selectedMonth, setSelectedMonth, metrics } = useLedger();
 
   const formatMonthTitle = (monthStr: string) => {
     if (!monthStr || !monthStr.includes('-')) {
@@ -22,6 +22,22 @@ export const Header: React.FC<HeaderProps> = ({ onOpenMonthSelector, onOpenSetti
     const [year, month] = monthStr.split('-');
     const date = new Date(parseInt(year, 10), parseInt(month, 10) - 1, 1);
     return date.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+  };
+
+  const handlePrevMonth = () => {
+    if (!selectedMonth || !selectedMonth.includes('-')) return;
+    const [year, month] = selectedMonth.split('-');
+    const date = new Date(parseInt(year, 10), parseInt(month, 10) - 2, 1);
+    const prevStr = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+    setSelectedMonth(prevStr);
+  };
+
+  const handleNextMonth = () => {
+    if (!selectedMonth || !selectedMonth.includes('-')) return;
+    const [year, month] = selectedMonth.split('-');
+    const date = new Date(parseInt(year, 10), parseInt(month, 10), 1);
+    const nextStr = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+    setSelectedMonth(nextStr);
   };
 
   return (
@@ -45,21 +61,39 @@ export const Header: React.FC<HeaderProps> = ({ onOpenMonthSelector, onOpenSetti
                 </View>
               )}
             </View>
-            <Text style={styles.ownerSubtitle}>
+            <Text style={styles.ownerSubtitle} numberOfLines={1}>
               {storeProfile ? `Proprietor: ${storeProfile.owner_name}` : 'Global Multi-Tenant Control'}
             </Text>
           </View>
         </View>
 
         <View style={styles.topActions}>
-          <TouchableOpacity 
-            style={styles.monthPill}
-            onPress={onOpenMonthSelector}
-            activeOpacity={0.8}
-          >
-            <Text style={styles.monthPillText}>{formatMonthTitle(selectedMonth)}</Text>
-            <ChevronDown size={14} color="#2563eb" />
-          </TouchableOpacity>
+          <View style={styles.monthToggleBar}>
+            <TouchableOpacity
+              style={styles.navChip}
+              onPress={handlePrevMonth}
+              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+            >
+              <ChevronLeft size={16} color="#2563eb" />
+            </TouchableOpacity>
+
+            <TouchableOpacity 
+              style={styles.monthPill}
+              onPress={onOpenMonthSelector}
+              activeOpacity={0.8}
+            >
+              <Text style={styles.monthPillText}>{formatMonthTitle(selectedMonth)}</Text>
+              <ChevronDown size={14} color="#2563eb" />
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.navChip}
+              onPress={handleNextMonth}
+              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+            >
+              <ChevronRight size={16} color="#2563eb" />
+            </TouchableOpacity>
+          </View>
 
           <TouchableOpacity
             style={styles.iconBtn}
@@ -170,23 +204,34 @@ const styles = StyleSheet.create({
   topActions: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    gap: 6,
+  },
+  monthToggleBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#1e293b',
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: '#334155',
+    paddingHorizontal: 2,
+  },
+  navChip: {
+    width: 32,
+    height: 34,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   monthPill: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#1e293b',
-    borderWidth: 1,
-    borderColor: '#334155',
-    paddingHorizontal: 12,
+    paddingHorizontal: 6,
     paddingVertical: 6,
-    borderRadius: 20,
-    gap: 6,
+    gap: 4,
   },
   monthPillText: {
     color: '#38bdf8',
-    fontSize: 13,
-    fontWeight: '600',
+    fontSize: 12,
+    fontWeight: '700',
   },
   iconBtn: {
     backgroundColor: '#1e293b',
