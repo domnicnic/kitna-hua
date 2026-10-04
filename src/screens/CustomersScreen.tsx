@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, TextInput, ScrollView, TouchableOpacity, FlatList } from 'react-native';
+import { View, Text, StyleSheet, TextInput, ScrollView, TouchableOpacity, FlatList, Alert } from 'react-native';
 import { useLedger, FilterCategory } from '../context/LedgerContext';
 import { CustomerCard } from '../components/CustomerCard';
 import { AddCustomerModal } from '../components/AddCustomerModal';
